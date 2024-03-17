@@ -1,28 +1,19 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-import requests
 
-# api_key = '68ca08d738dd1219a5f92c9d16b60c65'
-# app_id = '5110e220'
-# url = 'https://api.schooldigger.com/v2.0/districts'
-#
-# params = {
-#     'q': 'Liberty',
-#     'st': 'CA',
-#     'appID': app_id,
-#     'appKey': api_key,
-# }
-# response = requests.get(url, params=params)
-#
-# if response.status_code == 200:
-#     # Parse the JSON response into a Python dictionary
-#     data = response.json()
-#     for school in data['districtList']:
-#         print(school['districtName'])
-#     print(data)
-st.title("Underfunded District Identifier")
-st.subheader("2020 California School Districts Information")
+
+
+st.markdown("<h1 style='text-align: center; color: White;'>Funding Futures</h1>", unsafe_allow_html=True)
+state_names = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming']
+
+# Create dropdown selectbox
+state = st.selectbox('Select a state:', state_names)
+
+# Display the selected state
+st.write('Selected state:', state)
+
+st.markdown(f"<h2 style='text-align: center; color: white;'>2020 {state} School Districts Information</h2>", unsafe_allow_html=True)
 
 opt0 = 'Drop Down Menu'
 opt1 = 'Impacting a greater audience'
@@ -35,8 +26,8 @@ option = st.selectbox('What is most important to you?',
 original_df = pd.read_csv("/Users/adityapatwal/Documents/hackathon/districtcosts/Data-Table 1.csv")
 
 #filter to data from California 2020
-california_df = original_df[original_df['state_name'] == 'California']
-temp_df = california_df[california_df['year'] == 2020]
+state_df = original_df[original_df['state_name'] == state]
+temp_df = state_df[state_df['year'] == 2020]
 
 # only consider negative funding gaps per pupil
 new_df = temp_df[['district', 'ppcstot', 'predcost', 'fundinggap', 'enroll']]
@@ -55,7 +46,7 @@ negative_fundinggaps_df = negative_fundinggaps_df.rename(columns = {'district':'
                                                                     })
 totalEnrollment = negative_fundinggaps_df['Enrollment Size'].sum()
 
-st.dataframe(negative_fundinggaps_df)
+st.dataframe(negative_fundinggaps_df, width = 800)
 
 
 # WEIGHT
@@ -72,10 +63,7 @@ if option == opt1:
     # calculate what percentage of funds should be allocated to each school
     weight_sum = lowest_totalgaps['weight'].sum()
     lowest_totalgaps['weight'] = (lowest_totalgaps['weight']/weight_sum)
-
-
     lowest_totalgaps.loc[:, 'Total Allocated Funds'] = lowest_totalgaps['weight'] * funds
-
     lowest_totalgaps = lowest_totalgaps[['District', 'Funding Gap', 'Total Gap', 'Total Allocated Funds']]
     lowest_totalgaps = lowest_totalgaps.rename(columns={"Funding Gap": "Per Student Funding Gap", "Total Gap": "Total Funding Gap"})
 
@@ -92,12 +80,9 @@ elif option == opt2:
 
 
 
-
-
-
 #Display information
 if option == opt2 or option == opt1:
-    st.dataframe(lowest_totalgaps)
+    st.dataframe(lowest_totalgaps, width=800)
 
 
 
