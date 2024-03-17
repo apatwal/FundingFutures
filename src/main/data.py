@@ -1,91 +1,99 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
+import locale
+import re
 
-
-
+locale.setlocale(locale.LC_ALL, '')
+#Title
 st.markdown("<h1 style='text-align: center; color: White;'>Funding Futures</h1>", unsafe_allow_html=True)
-state_names = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming']
+
 
 # Create dropdown selectbox
-state = st.selectbox('Select a state:', state_names)
+state_names = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming']
+
+state = st.sidebar.selectbox('Select a state:', state_names, placeholder='Select State', index=4)
+
 
 # Display the selected state
-st.write('Selected state:', state)
-
-st.markdown(f"<h2 style='text-align: center; color: white;'>2020 {state} School Districts Information</h2>", unsafe_allow_html=True)
-
-opt0 = 'Drop Down Menu'
-opt1 = 'Impacting a greater audience'
-opt2 = 'Helping those in need equally'
-option = st.selectbox('What is most important to you?',
-     (opt0, opt1, opt2))
+#st.write('Selected state:', state)
+st.markdown(f"<h2 style='text-align: center; color: white;'>{state} School Districts Information</h2>", unsafe_allow_html=True)
 
 
 #create dataframe of 100 schools with least funding
-original_df = pd.read_csv("/Users/adityapatwal/Documents/hackathon/districtcosts/Data-Table 1.csv")
+df = pd.read_csv("/Users/adityapatwal/Documents/hackathon/districtcosts/Data-Table 1.csv")
 
-#filter to data from California 2020
-state_df = original_df[original_df['state_name'] == state]
-temp_df = state_df[state_df['year'] == 2020]
+
+#filter to data from selected state 2020
+df = df[df['state_name'] == state]
+df = df[df['year'] == 2020]
+
 
 # only consider negative funding gaps per pupil
-new_df = temp_df[['district', 'ppcstot', 'predcost', 'fundinggap', 'enroll']]
-negative_fundinggaps_df = new_df[new_df['fundinggap'] < 0]
+df = df[['district', 'ppcstot', 'predcost', 'fundinggap', 'enroll']]
+df = df[df['fundinggap'] < 0]
+
 
 #calculate totalGaps for each school
-negative_fundinggaps_df = negative_fundinggaps_df.copy()
-negative_fundinggaps_df.loc[:, 'Total Gap'] = negative_fundinggaps_df['fundinggap'] * negative_fundinggaps_df['enroll']
-totalgap_sum = negative_fundinggaps_df['Total Gap'].sum()
-
-negative_fundinggaps_df = negative_fundinggaps_df.rename(columns = {'district':'District',
-                                                                    'ppcstot': 'Spending per Pupil',
-                                                                    'predcost' : 'Required Spending',
-                                                                    'fundinggap' : 'Funding Gap',
-                                                                    'enroll' : 'Enrollment Size',
-                                                                    })
-totalEnrollment = negative_fundinggaps_df['Enrollment Size'].sum()
-
-st.dataframe(negative_fundinggaps_df, width = 800)
+#calculate totalGaps for each school
+df.loc[:, 'Total Gap'] = df['fundinggap'] * df['enroll']
+totalgap_sum = df['Total Gap'].sum()
+def convertToCurrency(value):
+    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')  # Set the locale to use the correct formatting
+    s = locale.currency(value, grouping=True, symbol=True)  # Specify symbol=True to include the currency symbol
+    s = re.sub(r'[()]', '', s)  # Remove parentheses
+    return s
+s = convertToCurrency(totalgap_sum)
+st.sidebar.write(f"The total funds needed in order to properly fund each district is " + s)
 
 
-# WEIGHT
+#rename columns
+df = df.rename(columns = {'district':'District',
+                          'ppcstot': 'Spending per Pupil',
+                          'predcost' : 'Required Spending',
+                          'fundinggap' : 'Funding Gap',
+                          'enroll' : 'Enrollment Size',
+                          })
 
-funds = int(st.text_input(label="Enter Funds...", value="0"))
-st.write("The amount of funds is equal to ", funds)
+
+#calculate total enrollment size
+totalEnrollment = df['Enrollment Size'].sum()
 
 
+#Dropdown menu that determines algorithm for weight of districts
+opt1 = 'Impacting a greater audience'
+opt2 = 'Helping those in need equally'
+option = st.sidebar.selectbox('What is most important to you?',
+                              (opt1, opt2), placeholder="Select One")
+
+
+#Number input that takes in the amount of funds to be allocated
+funds = st.sidebar.number_input(label='Enter Funds', value=10000000)
+#st.write("The amount of funds is equal to ", funds)
+
+
+#Implement previously chosen option
 if option == opt1:
-    # find weight by taking sqrt of a schools total gap / California's funding gap
-    negative_fundinggaps_df.loc[:, 'weight'] = np.sqrt(negative_fundinggaps_df['Total Gap']/totalgap_sum)
-    lowest_totalgaps = negative_fundinggaps_df.nlargest(100, 'weight', keep='last').sort_values('weight')
-
-    # calculate what percentage of funds should be allocated to each school
-    weight_sum = lowest_totalgaps['weight'].sum()
-    lowest_totalgaps['weight'] = (lowest_totalgaps['weight']/weight_sum)
-    lowest_totalgaps.loc[:, 'Total Allocated Funds'] = lowest_totalgaps['weight'] * funds
-    lowest_totalgaps = lowest_totalgaps[['District', 'Funding Gap', 'Total Gap', 'Total Allocated Funds']]
-    lowest_totalgaps = lowest_totalgaps.rename(columns={"Funding Gap": "Per Student Funding Gap", "Total Gap": "Total Funding Gap"})
-
+    # find weight by taking sqrt of a schools total gap / states's funding gap
+    df.loc[:, 'weight'] = np.sqrt(df['Total Gap']/totalgap_sum)
 elif option == opt2:
-     negative_fundinggaps_df.loc[:, 'weight'] = np.sqrt(negative_fundinggaps_df['Enrollment Size']/totalEnrollment)
-     lowest_totalgaps = negative_fundinggaps_df.nlargest(100, 'weight', keep='last').sort_values('weight')
-     # calculate what percentage of funds should be allocated to each school
-     weight_sum = lowest_totalgaps['weight'].sum()
-     lowest_totalgaps['weight'] = (lowest_totalgaps['weight']/weight_sum)
-     lowest_totalgaps.loc[:, 'Total Allocated Funds'] = lowest_totalgaps['weight'] * funds
-
-     lowest_totalgaps = lowest_totalgaps[['District', 'Funding Gap', 'Total Gap', 'Total Allocated Funds']]
-     lowest_totalgaps = lowest_totalgaps.rename(columns={"Funding Gap": "Per Student Funding Gap", "Total Gap": "Total Funding Gap"})
+    df.loc[:, 'weight'] = df['Total Gap']/totalgap_sum
 
 
+# calculate what percentage of funds should be allocated to each school
+df = df.nlargest(100, 'weight', keep='last').sort_values('weight')
+weight_sum = df['weight'].sum()
+df['weight'] = (df['weight']/weight_sum)
+df.loc[:, 'Total Allocated Funds'] = df['weight'] * funds
+df.loc[:, 'Post Allocation Gap'] = df['Funding Gap'] + (df['Total Allocated Funds']/df['Enrollment Size'])
+df = df[['District', 'Funding Gap', 'Total Gap', 'Total Allocated Funds', 'Post Allocation Gap']]
+df = df.rename(columns={"Funding Gap": "Per Student Funding Gap", "Total Gap": "Total Funding Gap"})
+df.reset_index(inplace=True)
 
 #Display information
 if option == opt2 or option == opt1:
-    st.dataframe(lowest_totalgaps, width=800)
+    st.dataframe(df)
 
-
-
-
-
-
+bar_data = df[['District', 'Post Allocation Gap']]
+bar_data.loc[:, 'Difference'] = df['Per Student Funding Gap'] - df['Post Allocation Gap']
+st.bar_chart(bar_data, x="District",  y=["Post Allocation Gap", "Difference"], color=["#FF0000", "#0000FF"], height=800)
