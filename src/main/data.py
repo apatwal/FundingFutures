@@ -43,7 +43,7 @@ def convertToCurrency(value):
     s = locale.currency(value, grouping=True, symbol=True)  # Specify symbol=True to include the currency symbol
     s = re.sub(r'[()]', '', s)  # Remove parentheses
     return s
-s = convertToCurrency(totalgap_sum)
+s = convertToCurrency(abs(totalgap_sum))
 st.sidebar.write(f"The total funds needed in order to properly fund each district is " + s)
 
 
@@ -61,8 +61,8 @@ totalEnrollment = df['Enrollment Size'].sum()
 
 
 #Dropdown menu that determines algorithm for weight of districts
-opt1 = 'Impacting a greater audience'
-opt2 = 'Helping those in need equally'
+opt1 = 'Helping those in need proportionately'
+opt2 = 'Impacting a greater audience'
 option = st.sidebar.selectbox('What is most important to you?',
                               (opt1, opt2), placeholder="Select One")
 
